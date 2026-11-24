@@ -1,0 +1,329 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    background: #2d1b7a;
+  }
+  body {
+    @apply bg-night font-sans text-white antialiased;
+  }
+  :focus-visible {
+    outline: 3px solid #ffffff;
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex min-h-[48px] items-center justify-center gap-2 rounded-full border-2 border-ink px-6 text-base font-bold text-ink transition-transform active:translate-x-[2px] active:translate-y-[2px];
+  }
+  .btn-sun {
+    @apply btn bg-sun shadow-pop-sm;
+  }
+  .btn-mint {
+    @apply btn bg-mint shadow-pop-sm;
+  }
+  .btn-dark {
+    @apply btn bg-ink text-white shadow-pop-sm;
+  }
+  .btn-big {
+    @apply min-h-[56px] px-8 text-lg shadow-pop;
+  }
+  /* Карточки цветные: цвет задаётся классом bg-* рядом, по умолчанию мятный */
+  .card {
+    @apply rounded-3xl border-2 border-ink bg-mint p-5 text-ink;
+  }
+  .card-pop {
+    @apply card shadow-pop;
+  }
+  .chip {
+    @apply inline-flex min-h-[44px] items-center rounded-full border-2 border-ink px-4 text-sm font-bold text-ink;
+  }
+  /* Поля тёмные, чтобы не было белых пятен на цветных карточках */
+  .field {
+    @apply w-full rounded-2xl border-2 border-ink bg-ink px-4 py-3 text-base text-white placeholder:text-white/60;
+  }
+  .h-display {
+    @apply font-display font-extrabold tracking-tight;
+  }
+}
+
+@keyframes meet-card-in {
+  from { opacity: 0; translate: 0 16px; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+.invite-page {
+  font-size: clamp(1.3125rem, 1.9vw, 1.6875rem);
+  line-height: 1.45;
+}
+
+.invite-grid > section {
+  min-width: 0;
+  padding: clamp(1.125rem, 3vw, 2rem);
+  overflow-wrap: anywhere;
+}
+
+.invite-grid h2:not(.sr-only) {
+  font-size: clamp(2rem, 3.05vw, 2.75rem);
+  line-height: 1.15;
+}
+
+.invite-page .field,
+.invite-page :is(.btn-dark, .btn-sun, .btn-mint, .invite-rsvp-button) {
+  min-height: clamp(3.75rem, 5.3vw, 4.75rem);
+  font-size: clamp(1.25rem, 1.65vw, 1.5rem);
+  line-height: 1.25;
+}
+
+.invite-page :is(.btn-dark, .btn-sun, .btn-mint) {
+  padding-block: .55em;
+  text-align: center;
+}
+
+.invite-page .chip,
+.invite-grid .text-sm {
+  font-size: clamp(1.125rem, 1.45vw, 1.3125rem);
+}
+
+.invite-page .chip {
+  min-height: 3rem;
+  padding-block: .35em;
+  line-height: 1.25;
+}
+
+@media (min-width: 1024px) {
+  .invite-grid > section:last-of-type:nth-of-type(odd) {
+    grid-column: 1 / -1;
+  }
+}
+
+@keyframes meet-sticker-in {
+  from { opacity: 0; scale: .8; rotate: -12deg; }
+  to { opacity: 1; scale: 1; rotate: 0deg; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .invite-preview, .event-card-enter {
+    animation: meet-card-in 440ms ease-out var(--entry-delay, 0ms) backwards;
+  }
+
+  .invite-sticker {
+    animation: meet-sticker-in 420ms cubic-bezier(.22, 1.4, .4, 1) 180ms backwards;
+  }
+
+  .event-grid > li { transition: transform 180ms ease-out; }
+  .event-grid > li:focus-within { transform: translateY(-4px); }
+
+  @media (hover: hover) and (pointer: fine) {
+    .event-grid > li:hover { transform: translateY(-4px); }
+  }
+}
+
+.scroll-invitation__model {
+  position: relative;
+  width: min(70%, 390px);
+  aspect-ratio: 1.6;
+  margin-top: 2.5rem;
+  transform: rotateX(var(--pitch, 8deg)) rotateY(var(--yaw, -12deg)) rotateZ(-8deg);
+  isolation: isolate;
+}
+
+.scroll-invitation__back,
+.scroll-invitation__pocket,
+.scroll-invitation__flap {
+  position: absolute;
+  inset: 0;
+}
+
+.scroll-invitation__back {
+  border-radius: 1rem;
+  background: #a63365;
+  box-shadow: 0 22px 40px #1b0e4f99, 0 7px 0 #7f234f;
+}
+
+.scroll-invitation__card {
+  position: absolute;
+  inset: 5% 9% 7%;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+  padding: 7%;
+  border-radius: .8rem;
+  background: linear-gradient(135deg, #fff4b0, #ffd35c);
+  color: #22143e;
+  box-shadow: 0 6px 16px #53284c40;
+  transform: translateY(var(--lift, -60%));
+}
+
+.scroll-invitation__pocket {
+  z-index: 3;
+  border-radius: 1rem;
+  clip-path: polygon(0 0, 50% 55%, 100% 0, 100% 100%, 0 100%);
+  background: conic-gradient(from 237deg at 50% 55%, #f886bb 124deg, #f36aad 0 249deg, #ff9ac7 0);
+}
+
+.scroll-invitation__flap {
+  z-index: var(--flap-layer, 1);
+  height: 58%;
+  border-radius: 1rem 1rem 0 0;
+  clip-path: polygon(0 0, 100% 0, 53% 96%, 50% 100%, 47% 96%);
+  background: linear-gradient(150deg, #ffb9d7, #f982b6);
+  transform-origin: top;
+  transform: perspective(850px) rotateX(var(--flap, -175deg));
+}
+
+.meet-scene {
+  --scene-base: #442484;
+  --scene-glow: #a756a8;
+  display: grid;
+  align-items: center;
+  overflow: hidden;
+  position: relative;
+  isolation: isolate;
+  border: 1px solid #ffffff30;
+  border-radius: clamp(1.75rem, 4vw, 3.5rem);
+  background: radial-gradient(ellipse at 72% 48%, var(--scene-glow), var(--scene-base) 65%);
+}
+
+.meet-scene[data-scene="share"] {
+  --scene-base: #293778;
+  --scene-glow: #526bd1;
+}
+
+.meet-scene[data-scene="rsvp"] {
+  --scene-base: #173c54;
+  --scene-glow: #327c78;
+}
+
+.meet-scene__copy {
+  padding: clamp(1.5rem, 5vw, 4.5rem);
+  position: relative;
+  z-index: 1;
+}
+
+.meet-scene__stage {
+  display: grid;
+  position: relative;
+  place-items: center;
+  min-width: 0;
+  min-height: clamp(19rem, 63vw, 38rem);
+  perspective: 950px;
+}
+
+@media (max-width: 767px) {
+  .meet-scene[data-scene="invite"] .meet-scene__stage {
+    padding-top: 2rem;
+    min-height: clamp(21rem, 68vw, 39rem);
+  }
+}
+
+.meet-scene__orbit {
+  position: absolute;
+  width: 85%;
+  aspect-ratio: 1.5;
+  border: 1px solid #ffffff50;
+  border-radius: 50%;
+  transform: rotateX(32deg) rotateZ(calc(-32deg + var(--orbit, 45deg)));
+}
+
+.meet-scene__orbit::after {
+  position: absolute;
+  content: "";
+  inset: 12%;
+  border: 1px dashed #ffffff50;
+  border-radius: inherit;
+}
+
+.meet-share {
+  position: relative;
+  width: min(87%, 620px);
+  aspect-ratio: 1.4;
+}
+
+.meet-share__trail {
+  position: absolute;
+  inset: 48% 40% 8% 3%;
+  border: 3px dashed #c6deff;
+  border-top: 0;
+  border-right: 0;
+  border-radius: 12% 0 0 70%;
+  opacity: var(--trail, .8);
+  transform-origin: right center;
+  transform: rotate(-17deg) scaleX(var(--trail, .8));
+}
+
+.meet-share__plane {
+  position: absolute;
+  inset: 8% 10% 14% 12%;
+  transform-style: preserve-3d;
+  transform: translate(var(--flight-x, 15%), var(--flight-y, -22%))
+    rotateX(var(--pitch, -12deg)) rotateY(var(--yaw, 12deg)) rotateZ(var(--flight-roll, -14deg));
+}
+
+.meet-share__wing {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(0 42%, 100% 0, 39% 62%);
+  background: linear-gradient(135deg, #fff4af, #ffe27a);
+}
+
+.meet-share__wing + .meet-share__wing {
+  clip-path: polygon(39% 62%, 100% 0, 56% 100%);
+  background: linear-gradient(45deg, #e4a43e, #fff1a0);
+  transform-origin: 100% 0;
+  transform: rotateY(-22deg);
+}
+
+.meet-rsvp {
+  display: grid;
+  width: min(72%, 500px);
+  place-items: center;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--pitch, -10deg)) rotateY(var(--yaw, 12deg));
+}
+
+.meet-rsvp__chip {
+  grid-area: 1 / 1;
+  border: 2px solid #22143e;
+  border-radius: 999px;
+  padding: .55em 1em;
+  background: #abf6dd;
+  color: #22143e;
+  font-size: clamp(1.3rem, 4vw, 3.25rem);
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 8px 0 #2b786f, 0 18px 30px #102b45a6;
+  transform: translate3d(-14%, calc(var(--first, 85%) * -1.16), 52px) rotate(var(--first-roll, -12deg));
+}
+
+.meet-rsvp__chip:nth-child(2) {
+  background: #ffd767;
+  box-shadow: 0 8px 0 #b46528, 0 18px 30px #102b4590;
+  transform: translate3d(calc(var(--second, 85%) * .28), calc(var(--second, 85%) * 1.02), 29px) rotate(12deg);
+}
+
+.meet-rsvp__chip:nth-child(3) {
+  background: #ff9ac7;
+  box-shadow: 0 8px 0 #a33f71, 0 18px 30px #102b4590;
+  transform: translate3d(calc(var(--third, 85%) * -1.86), calc(var(--third, 85%) * .47), 13px) rotate(-16deg);
+}
+
+@media (min-width: 768px) {
+  .meet-scene {
+    grid-template-columns: minmax(16rem, 2fr) minmax(0, 3fr);
+    min-height: min(75vh, 42rem);
+  }
+
+  .meet-scene__stage {
+    min-height: clamp(24rem, 52vw, 38rem);
+  }
+
+  .scroll-invitation__model {
+    width: min(77%, 610px);
+  }
+}
+

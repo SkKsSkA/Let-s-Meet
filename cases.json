@@ -1,0 +1,26 @@
+{
+  "frozen_note": "Phrases and intended values were written and saved BEFORE the first run and were not changed afterwards.",
+  "planned_run_date": "2026-10-25",
+  "key_fields": ["type", "title", "datetime", "place", "dress_code"],
+  "cases": [
+    {"id": 1, "prompt": "Вечеринка у Айдара в пятницу в 20:00 в клубе Нота, дресс-код чёрный",
+     "intended": {"type": "Вечеринка", "title_key": "вечеринка у айдара", "datetime": "2026-10-30T20:00", "place_stem": "клуб", "dress_stem": "чёрн"}},
+    {"id": 2, "prompt": "Пикник на природе в субботу в 11:00 у озера, дресс-код спортивный",
+     "intended": {"type": "Выезд на природу", "title_key": "пикник", "datetime": "2026-10-31T11:00", "place_stem": "озер", "dress_stem": "спортив"}},
+    {"id": 3, "prompt": "Книжный клуб: обсуждаем новую книгу в четверг в 19:30 в кофейне, дресс-код свободный",
+     "intended": {"type": "Книжный клуб", "title_key": "книжный клуб", "datetime": "2026-10-29T19:30", "place_stem": "кофейн", "dress_stem": "свобод"}},
+    {"id": 4, "prompt": "Утренняя пробежка завтра в 7:30 на набережной, дресс-код спортивная форма",
+     "intended": {"type": "Пробежка", "title_key": "пробежка", "datetime": "2026-10-26T07:30", "place_stem": "набереж", "dress_stem": "спортив"}},
+    {"id": 5, "prompt": "День рождения Алины 28 октября в 18:00 в кафе Sweet, дресс-код вечерний",
+     "intended": {"type": "День рождения", "title_key": "день рождения алины", "datetime": "2026-10-28T18:00", "place_stem": "кафе", "dress_stem": "вечерн"}}
+  ],
+  "rules": {
+    "type": "exact match with the intended event type",
+    "title": "contains the intended key phrase (case-insensitive) AND contains no date/time words (weekday, clock time, 'завтра', day + month name)",
+    "datetime": "starts_at equals the intended date and time exactly; null counts as wrong",
+    "place": "location_name contains the intended place stem (case-insensitive)",
+    "dress_code": "at least one dress-code item contains the intended stem (case-insensitive)",
+    "actions_A": "manual form: 1 entry action per key field = 5 actions per case",
+    "actions_B": "AI-assisted: 2 fixed actions (type the phrase, press the AI button) + 1 correction action per key field the draft got wrong"
+  }
+}

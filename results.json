@@ -1,0 +1,92 @@
+{
+  "run_at": "2026-11-02T13:14:51+05:00",
+  "rows": [
+    {
+      "id": 1,
+      "A_actions": 5,
+      "B_actions": 3,
+      "B_fields_correct": 4,
+      "wrong_fields": [
+        "datetime"
+      ],
+      "ok": {
+        "type": true,
+        "title": true,
+        "datetime": false,
+        "place": true,
+        "dress_code": true
+      },
+      "source": "fallback"
+    },
+    {
+      "id": 2,
+      "A_actions": 5,
+      "B_actions": 4,
+      "B_fields_correct": 3,
+      "wrong_fields": [
+        "datetime",
+        "place"
+      ],
+      "ok": {
+        "type": true,
+        "title": true,
+        "datetime": false,
+        "place": false,
+        "dress_code": true
+      },
+      "source": "fallback"
+    },
+    {
+      "id": 3,
+      "A_actions": 5,
+      "B_actions": 3,
+      "B_fields_correct": 4,
+      "wrong_fields": [
+        "datetime"
+      ],
+      "ok": {
+        "type": true,
+        "title": true,
+        "datetime": false,
+        "place": true,
+        "dress_code": true
+      },
+      "source": "fallback"
+    },
+    {
+      "id": 4,
+      "A_actions": 5,
+      "B_actions": 3,
+      "B_fields_correct": 4,
+      "wrong_fields": [
+        "datetime"
+      ],
+      "ok": {
+        "type": true,
+        "title": true,
+        "datetime": false,
+        "place": true,
+        "dress_code": true
+      },
+      "source": "fallback"
+    },
+    {
+      "id": 5,
+      "A_actions": 5,
+      "B_actions": 4,
+      "B_fields_correct": 3,
+      "wrong_fields": [
+        "title",
+        "datetime"
+      ],
+      "ok": {
+        "type": true,
+        "title": false,
+        "datetime": false,
+        "place": true,
+        "dress_code": true
+      },
+      "source": "fallback"
+    }
+  ]
+}
