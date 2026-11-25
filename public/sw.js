@@ -23,6 +23,8 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/auth/")) return;
 
+  if (url.pathname === "/owner" || url.pathname.startsWith("/owner/")) return;
+
   if (req.mode === "navigate") {
     event.respondWith(
       fetch(req)

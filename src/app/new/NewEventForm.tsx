@@ -4,12 +4,14 @@ import type { MessageKey } from "@/lib/i18n";
 import { useLocale } from "@/components/LocaleProvider";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { COVER_BG, COVER_ORDER } from "@/lib/cover";
 import { formatKind, KINDS, makeSlug } from "@/lib/format";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { normalizeKaspiLink, normalizePhone } from "@/lib/pay";
-import type { AiDraft, CoverColor, Visibility } from "@/lib/types";
+import type { CoverColor, Visibility } from "@/lib/types";
+import { eventStartIso, fundTarget, type AgentDraft } from "@/lib/event-agent";
+import { EventAgent } from "./EventAgent";
 
 
 export function NewEventForm() {
@@ -17,9 +19,7 @@ export function NewEventForm() {
   const COVER_NAME: Record<CoverColor, string> = { coral: t("coverCoral"), sun: t("coverYellow"), violet: t("coverLilac") };
   const router = useRouter();
 
-  const [prompt, setPrompt] = useState("");
-  const [aiBusy, setAiBusy] = useState(false);
-  const [aiNote, setAiNote] = useState<MessageKey | "">("");
+  const titleInput = useRef<HTMLInputElement>(null);
 
   const [kind, setKind] = useState<string>(KINDS[1]);
   const [title, setTitle] = useState("");
@@ -41,37 +41,22 @@ export function NewEventForm() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<MessageKey | "">("");
 
-  async function generate() {
-    setAiBusy(true);
-    setAiNote("");
-    try {
-      const res = await fetch("/api/ai/draft", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ prompt }),
-      });
-      if (!res.ok) {
-        setAiNote(res.status === 400 ? "draftLength" : "draftFailed");
-        return;
-      }
-      const { draft, source } = (await res.json()) as { draft: AiDraft; source: "ai" | "fallback" };
-      setKind(draft.kind);
-      setTitle(draft.title);
-      setDescription(draft.description);
-      if (draft.starts_at) setStartsAt(draft.starts_at);
-      if (draft.location_name) setPlace(draft.location_name);
-      setDress(draft.dress_code.join(", "));
-      setBring(draft.bring.join("\n"));
-      setAiNote(
-        source === "ai"
-          ? "draftReady"
-          : "draftFallback",
-      );
-    } catch {
-      setAiNote("draftOffline");
-    } finally {
-      setAiBusy(false);
+  function applyDraft(draft: AgentDraft) {
+    setKind(draft.kind);
+    setTitle(draft.title);
+    setDescription(draft.description);
+    if (draft.starts_at) setStartsAt(draft.starts_at);
+    if (draft.location_name) setPlace(draft.location_name);
+    if (draft.address) setAddress(draft.address);
+    if (draft.dress_code.length) setDress(draft.dress_code.join(", "));
+    if (draft.bring.length) setBring(draft.bring.join("\n"));
+    const amount = fundTarget(draft.fund);
+    if (draft.fund && amount) {
+      setMoneyOn(true);
+      setGoalAmount(String(amount));
+      if (draft.fund.title) setGoalTitle(draft.fund.title);
     }
+    titleInput.current?.focus();
   }
 
   async function save(e: React.FormEvent) {
@@ -80,7 +65,8 @@ export function NewEventForm() {
     const sb = getBrowserSupabase();
     if (!sb) return;
     if (!title.trim()) return setError("needTitle");
-    if (!startsAt) return setError("needDate");
+    const startsAtIso = eventStartIso(startsAt);
+    if (!startsAtIso) return setError("needDate");
     const amount = Math.round(Number(goalAmount));
     if (moneyOn && (!Number.isFinite(amount) || amount <= 0)) return setError("needGoal");
     const phone = moneyOn ? normalizePhone(payPhone) : null;
@@ -101,7 +87,7 @@ export function NewEventForm() {
       kind,
       title: title.trim(),
       description: description.trim(),
-      starts_at: new Date(startsAt).toISOString(),
+      starts_at: startsAtIso,
       location_name: place.trim(),
       address: address.trim(),
       dress_code: dress
@@ -142,186 +128,163 @@ export function NewEventForm() {
   }
 
   return (
-    <form onSubmit={save} className="mt-6 space-y-5">
-      <section className="card-pop bg-violet" aria-labelledby="ai-h">
-        <h2 id="ai-h" className="h-display text-base">
-          {t("describeInOneLine")}
-        </h2>
-        <label htmlFor="prompt" className="sr-only">
-          {t("eventDescription")}
-        </label>
-        <textarea
-          id="prompt"
-          rows={3}
-          maxLength={600}
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder={t("promptExample")}
-          className="field mt-3 resize-none"
-        />
-        <button type="button" onClick={generate} disabled={aiBusy || prompt.trim().length < 3} className="btn-sun mt-3 w-full disabled:opacity-60">
-          {aiBusy ? t("drafting") : t("fillWithAi")}
-        </button>
-        {aiNote && (
-          <p role="status" className="mt-3 rounded-2xl border-2 border-ink bg-ink p-3 text-[15px] font-semibold text-white">
-            {t(aiNote)}
+    <>
+      <EventAgent onApply={applyDraft} />
+      <form onSubmit={save} className="mt-6 space-y-5">
+        <section className="card bg-sun">
+          <h2 className="h-display text-base">{t("eventType")}</h2>
+          <div className="mt-3.5 flex flex-wrap gap-2.5">
+            {KINDS.map((k) => (
+              <button
+                key={k}
+                type="button"
+                aria-pressed={kind === k}
+                onClick={() => setKind(k)}
+                className={`chip ${kind === k ? "bg-ink text-white" : "bg-transparent"}`}
+              >
+                {formatKind(k, locale)}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="card bg-mint space-y-4">
+          <div>
+            <label htmlFor="title" className="block font-bold">
+              {t("eventTitle")}
+            </label>
+            <input id="title" ref={titleInput} value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} required className="field mt-1.5" />
+          </div>
+          <div>
+            <label htmlFor="when" className="block font-bold">
+              {t("agentDateTimeAlmaty")}
+            </label>
+            <input id="when" type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} required className="field mt-1.5" />
+          </div>
+          <div>
+            <label htmlFor="place" className="block font-bold">
+              {t("location")}
+            </label>
+            <input id="place" value={place} onChange={(e) => setPlace(e.target.value)} maxLength={120} placeholder={t("sampleLocation")} className="field mt-1.5" />
+          </div>
+          <div>
+            <label htmlFor="address" className="block font-bold">
+              {t("address")}
+            </label>
+            <input id="address" value={address} onChange={(e) => setAddress(e.target.value)} maxLength={200} placeholder={t("addressExample")} className="field mt-1.5" />
+          </div>
+          <div>
+            <label htmlFor="desc" className="block font-bold">
+              {t("description")}
+            </label>
+            <textarea id="desc" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} maxLength={2000} className="field mt-1.5" />
+          </div>
+        </section>
+
+        <section className="card bg-sky space-y-4">
+          <div>
+            <label htmlFor="dress" className="block font-bold">
+              {t("dressCode")} <span className="font-medium">{t("commaSeparated")}</span>
+            </label>
+            <input id="dress" value={dress} onChange={(e) => setDress(e.target.value)} placeholder={t("dressExample")} className="field mt-1.5" />
+          </div>
+          <div>
+            <label htmlFor="bring" className="block font-bold">
+              {t("whoBringsWhat")} <span className="font-medium">{t("onePerLine")}</span>
+            </label>
+            <textarea id="bring" rows={3} value={bring} onChange={(e) => setBring(e.target.value)} placeholder={[t("cake"), t("drinks"), t("speaker")].join("\n")} className="field mt-1.5" />
+          </div>
+        </section>
+
+        <section className="card bg-pink">
+          <label className="flex min-h-[44px] items-center justify-between gap-3 font-bold">
+            {t("collectMoney")}
+            <input type="checkbox" checked={moneyOn} onChange={(e) => setMoneyOn(e.target.checked)} className="h-6 w-6 accent-ink" />
+          </label>
+          {moneyOn && (
+            <div className="mt-3 space-y-3">
+              <div>
+                <label htmlFor="goalTitle" className="block text-sm font-bold">
+                  {t("fundPurpose")}
+                </label>
+                <input id="goalTitle" value={goalTitle} onChange={(e) => setGoalTitle(e.target.value)} placeholder={t("giftFund")} className="field mt-1" />
+              </div>
+              <div>
+                <label htmlFor="goalAmount" className="block text-sm font-bold">
+                  {t("fundTarget")}
+                </label>
+                <input id="goalAmount" inputMode="numeric" value={goalAmount} onChange={(e) => setGoalAmount(e.target.value)} placeholder="20000" className="field mt-1" />
+              </div>
+              <div>
+                <label htmlFor="payPhone" className="block text-sm font-bold">
+                  {t("personalPhone")}
+                </label>
+                <input id="payPhone" type="tel" inputMode="tel" autoComplete="tel" value={payPhone} onChange={(e) => setPayPhone(e.target.value)} placeholder="+7 707 123 45 67" className="field mt-1" />
+              </div>
+              <div>
+                <label htmlFor="payRecipient" className="block text-sm font-bold">
+                  {t("recipientDisplayName")} <span className="font-medium">{t("optional")}</span>
+                </label>
+                <input id="payRecipient" value={payRecipient} onChange={(e) => setPayRecipient(e.target.value)} maxLength={60} placeholder={t("recipientExample")} className="field mt-1" />
+              </div>
+              <div>
+                <label htmlFor="payLink" className="block text-sm font-bold">
+                  {t("kaspiPayLink")}
+                </label>
+                <input id="payLink" type="url" inputMode="url" value={payLink} onChange={(e) => setPayLink(e.target.value)} placeholder="https://kaspi.kz/..." className="field mt-1" />
+                <p className="mt-1 text-sm font-medium">{t("kaspiBusinessHint")}</p>
+              </div>
+              <p className="text-sm font-medium">
+                {t("paySetupHint")}
+              </p>
+            </div>
+          )}
+        </section>
+
+        <section className="card bg-sun">
+          <h2 className="h-display text-base">{t("eventVisibility")}</h2>
+          <div className="mt-3.5 grid grid-cols-2 gap-2.5">
+            {(
+              [
+                ["link", t("linkOnly")],
+                ["public", t("publicEvent")],
+              ] as const
+            ).map(([v, label]) => (
+              <button
+                key={v}
+                type="button"
+                aria-pressed={visibility === v}
+                onClick={() => setVisibility(v)}
+                className={`min-h-[48px] rounded-full border-2 border-ink font-bold ${visibility === v ? "bg-ink text-white" : "bg-transparent"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <h2 className="h-display mt-5 text-base">{t("coverColor")}</h2>
+          <div className="mt-3.5 flex gap-3">
+            {COVER_ORDER.map((c) => (
+              <button
+                key={c}
+                type="button"
+                aria-pressed={cover === c}
+                aria-label={COVER_NAME[c]}
+                onClick={() => setCover(c)}
+                className={`h-11 w-11 rounded-full border-2 border-ink ${COVER_BG[c]} ${cover === c ? "ring-4 ring-ink/30" : ""}`}
+              />
+            ))}
+          </div>
+        </section>
+
+        {error && (
+          <p role="alert" className="rounded-2xl border-2 border-ink bg-coral p-3.5 font-semibold">
+            {t(error)}
           </p>
         )}
-      </section>
-
-      <section className="card bg-sun">
-        <h2 className="h-display text-base">{t("eventType")}</h2>
-        <div className="mt-3.5 flex flex-wrap gap-2.5">
-          {KINDS.map((k) => (
-            <button
-              key={k}
-              type="button"
-              aria-pressed={kind === k}
-              onClick={() => setKind(k)}
-              className={`chip ${kind === k ? "bg-ink text-white" : "bg-transparent"}`}
-            >
-              {formatKind(k, locale)}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="card bg-mint space-y-4">
-        <div>
-          <label htmlFor="title" className="block font-bold">
-            {t("eventTitle")}
-          </label>
-          <input id="title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} required className="field mt-1.5" />
-        </div>
-        <div>
-          <label htmlFor="when" className="block font-bold">
-            {t("dateTime")}
-          </label>
-          <input id="when" type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} required className="field mt-1.5" />
-        </div>
-        <div>
-          <label htmlFor="place" className="block font-bold">
-            {t("location")}
-          </label>
-          <input id="place" value={place} onChange={(e) => setPlace(e.target.value)} maxLength={120} placeholder={t("sampleLocation")} className="field mt-1.5" />
-        </div>
-        <div>
-          <label htmlFor="address" className="block font-bold">
-            {t("address")}
-          </label>
-          <input id="address" value={address} onChange={(e) => setAddress(e.target.value)} maxLength={200} placeholder={t("addressExample")} className="field mt-1.5" />
-        </div>
-        <div>
-          <label htmlFor="desc" className="block font-bold">
-            {t("description")}
-          </label>
-          <textarea id="desc" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} maxLength={2000} className="field mt-1.5" />
-        </div>
-      </section>
-
-      <section className="card bg-sky space-y-4">
-        <div>
-          <label htmlFor="dress" className="block font-bold">
-            {t("dressCode")} <span className="font-medium">{t("commaSeparated")}</span>
-          </label>
-          <input id="dress" value={dress} onChange={(e) => setDress(e.target.value)} placeholder={t("dressExample")} className="field mt-1.5" />
-        </div>
-        <div>
-          <label htmlFor="bring" className="block font-bold">
-            {t("whoBringsWhat")} <span className="font-medium">{t("onePerLine")}</span>
-          </label>
-          <textarea id="bring" rows={3} value={bring} onChange={(e) => setBring(e.target.value)} placeholder={[t("cake"), t("drinks"), t("speaker")].join("\n")} className="field mt-1.5" />
-        </div>
-      </section>
-
-      <section className="card bg-pink">
-        <label className="flex min-h-[44px] items-center justify-between gap-3 font-bold">
-          {t("collectMoney")}
-          <input type="checkbox" checked={moneyOn} onChange={(e) => setMoneyOn(e.target.checked)} className="h-6 w-6 accent-ink" />
-        </label>
-        {moneyOn && (
-          <div className="mt-3 space-y-3">
-            <div>
-              <label htmlFor="goalTitle" className="block text-sm font-bold">
-                {t("fundPurpose")}
-              </label>
-              <input id="goalTitle" value={goalTitle} onChange={(e) => setGoalTitle(e.target.value)} placeholder={t("giftFund")} className="field mt-1" />
-            </div>
-            <div>
-              <label htmlFor="goalAmount" className="block text-sm font-bold">
-                {t("fundTarget")}
-              </label>
-              <input id="goalAmount" inputMode="numeric" value={goalAmount} onChange={(e) => setGoalAmount(e.target.value)} placeholder="20000" className="field mt-1" />
-            </div>
-            <div>
-              <label htmlFor="payPhone" className="block text-sm font-bold">
-                {t("personalPhone")}
-              </label>
-              <input id="payPhone" type="tel" inputMode="tel" autoComplete="tel" value={payPhone} onChange={(e) => setPayPhone(e.target.value)} placeholder="+7 707 123 45 67" className="field mt-1" />
-            </div>
-            <div>
-              <label htmlFor="payRecipient" className="block text-sm font-bold">
-                {t("recipientDisplayName")} <span className="font-medium">{t("optional")}</span>
-              </label>
-              <input id="payRecipient" value={payRecipient} onChange={(e) => setPayRecipient(e.target.value)} maxLength={60} placeholder={t("recipientExample")} className="field mt-1" />
-            </div>
-            <div>
-              <label htmlFor="payLink" className="block text-sm font-bold">
-                {t("kaspiPayLink")}
-              </label>
-              <input id="payLink" type="url" inputMode="url" value={payLink} onChange={(e) => setPayLink(e.target.value)} placeholder="https://kaspi.kz/..." className="field mt-1" />
-              <p className="mt-1 text-sm font-medium">{t("kaspiBusinessHint")}</p>
-            </div>
-            <p className="text-sm font-medium">
-              {t("paySetupHint")}
-            </p>
-          </div>
-        )}
-      </section>
-
-      <section className="card bg-sun">
-        <h2 className="h-display text-base">{t("eventVisibility")}</h2>
-        <div className="mt-3.5 grid grid-cols-2 gap-2.5">
-          {(
-            [
-              ["link", t("linkOnly")],
-              ["public", t("publicEvent")],
-            ] as const
-          ).map(([v, label]) => (
-            <button
-              key={v}
-              type="button"
-              aria-pressed={visibility === v}
-              onClick={() => setVisibility(v)}
-              className={`min-h-[48px] rounded-full border-2 border-ink font-bold ${visibility === v ? "bg-ink text-white" : "bg-transparent"}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <h2 className="h-display mt-5 text-base">{t("coverColor")}</h2>
-        <div className="mt-3.5 flex gap-3">
-          {COVER_ORDER.map((c) => (
-            <button
-              key={c}
-              type="button"
-              aria-pressed={cover === c}
-              aria-label={COVER_NAME[c]}
-              onClick={() => setCover(c)}
-              className={`h-11 w-11 rounded-full border-2 border-ink ${COVER_BG[c]} ${cover === c ? "ring-4 ring-ink/30" : ""}`}
-            />
-          ))}
-        </div>
-      </section>
-
-      {error && (
-        <p role="alert" className="rounded-2xl border-2 border-ink bg-coral p-3.5 font-semibold">
-          {t(error)}
-        </p>
-      )}
-      <button disabled={saving} className="btn-sun btn-big w-full disabled:opacity-60">
-        {saving ? t("saving") : t("publishEvent")}
-      </button>
-    </form>
+        <button disabled={saving} className="btn-sun btn-big w-full disabled:opacity-60">
+          {saving ? t("saving") : t("publishEvent")}
+        </button>
+      </form>
+    </>
   );
 }

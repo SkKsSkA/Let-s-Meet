@@ -1,0 +1,26 @@
+# Supabase: Project Settings -> API
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR-ANON-KEY
+
+# Публичный адрес сайта (для ссылок-приглашений)
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
+# ИИ-помощник (необязательно). Без ключа работает простой запасной вариант.
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-3.1-flash-lite
+
+# ───── Тестовая оплата картой (Stripe, test-режим) ─────
+# Ключи из dashboard.stripe.com/test/apikeys. Секретный ключ только на сервере, в браузер не попадает.
+STRIPE_SECRET_KEY=
+# Секрет webhook: из `stripe listen` (локально) или из Developers -> Webhooks (на Render).
+STRIPE_WEBHOOK_SECRET=
+# Нужен для записи оплаченного взноса. Supabase -> Project Settings -> API -> service_role. НИКОГДА не публикуй.
+SUPABASE_SERVICE_ROLE_KEY=
+# Показывает кнопку «Оплатить картой (тест)» на странице встречи. Значение: test
+NEXT_PUBLIC_CARD_PAYMENTS=test
+# Валюта списания. kzt, если аккаунт Stripe её принимает; иначе usd + курс ниже.
+STRIPE_CURRENCY=kzt
+STRIPE_KZT_PER_UNIT=500
+
+# Supabase Auth user ID for the private site analytics page
+ANALYTICS_OWNER_ID=

@@ -8,6 +8,7 @@ export const KINDS = [
   "Книжный клуб",
   "Пробежка",
   "Настольные игры",
+  "Тимбилдинг",
 ] as const;
 
 const KIND_LABELS: Record<(typeof KINDS)[number], MessageKey> = {
@@ -17,6 +18,7 @@ const KIND_LABELS: Record<(typeof KINDS)[number], MessageKey> = {
   [KINDS[3]]: "kindBooks",
   [KINDS[4]]: "kindRunning",
   [KINDS[5]]: "boardGames",
+  [KINDS[6]]: "kindTeam",
 };
 
 export function formatKind(kind: string, locale: Locale): string {

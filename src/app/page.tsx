@@ -47,7 +47,7 @@ export default function Home() {
               </p>
               <div className="mt-9 flex flex-wrap gap-4">
                 <Link href="/new" className="btn-sun btn-big">
-                  {t("createEvent")}
+                  {t("agentCTA")}
                 </Link>
                 <Link href="/e/demo" className="btn-mint btn-big">
                   {t("viewExample")}

@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { COVER_BG } from "@/lib/cover";
 import { daysLabel, formatDate, formatKind, formatTime } from "@/lib/format";
 import { getServerSupabase } from "@/lib/supabase/server";
+import { isAnalyticsOwner } from "@/lib/owner-analytics";
 import type { EventRow } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -51,6 +52,9 @@ export default async function DashboardPage() {
       <main className="mx-auto max-w-3xl px-5 pb-12 pt-4 sm:px-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="h-display text-3xl">{t("myEvents")}</h1>
+          {isAnalyticsOwner(auth.user) && (
+            <Link href="/owner" className="btn-mint">{t("ownerAnalytics")}</Link>
+          )}
           <Link href="/new" className="btn-sun">
             {t("newEvent")}
           </Link>
