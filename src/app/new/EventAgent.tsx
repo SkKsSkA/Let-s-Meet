@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useLocale } from "@/components/LocaleProvider";
 import { eventStartIso, fundAmount, fundTarget, type AgentDraft } from "@/lib/event-agent";
 import { formatDate, formatKind, formatMoney, formatTime, mapLink } from "@/lib/format";
+import type { VenueForecast } from "@/lib/venue-forecast";
 import type { MessageKey } from "@/lib/i18n";
 
 type Step = "request" | "when" | "where" | "fund" | "review" | "applied";
@@ -15,7 +16,7 @@ function nextStep(draft: AgentDraft, venueSkipped: boolean): Step {
   return "review";
 }
 
-export function EventAgent({ onApply }: { onApply: (draft: AgentDraft) => void }) {
+export function EventAgent({ onApply }: { onApply: (draft: AgentDraft, requestId?: string) => void }) {
   const { locale, t } = useLocale();
   const [step, setStep] = useState<Step>("request");
   const [draft, setDraft] = useState<AgentDraft | null>(null);
@@ -23,6 +24,8 @@ export function EventAgent({ onApply }: { onApply: (draft: AgentDraft) => void }
   const [place, setPlace] = useState("");
   const [total, setTotal] = useState("");
   const [busy, setBusy] = useState(false);
+  const [forecast, setForecast] = useState<VenueForecast>();
+  const [requestId, setRequestId] = useState<string>();
   const [fallback, setFallback] = useState(false);
   const [notice, setNotice] = useState<MessageKey | "">("");
 
@@ -45,6 +48,8 @@ export function EventAgent({ onApply }: { onApply: (draft: AgentDraft) => void }
     setTotal("");
     setNotice("");
     setFallback(false);
+    setRequestId(undefined);
+    setForecast(undefined);
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -64,7 +69,9 @@ export function EventAgent({ onApply }: { onApply: (draft: AgentDraft) => void }
           setNotice(response.status === 401 ? "agentSignIn" : response.status === 400 ? "draftLength" : "draftFailed");
           return;
         }
-        const result = (await response.json()) as { draft: AgentDraft; source: "ai" | "fallback" };
+        const result = (await response.json()) as { draft: AgentDraft; source: "ai" | "fallback"; requestId?: string; forecast?: VenueForecast };
+        setRequestId(result.requestId);
+        setForecast(result.forecast);
         setFallback(result.source === "fallback");
         move(result.draft);
       } catch {
@@ -89,7 +96,7 @@ export function EventAgent({ onApply }: { onApply: (draft: AgentDraft) => void }
       if (!Number.isSafeInteger(value) || !amount) return setNotice(askGuestCount ? "agentCountInvalid" : "agentAmountInvalid");
       move({ ...draft, fund: { ...draft.fund, total: amount } }, true);
     } else if (step === "review") {
-      onApply(draft);
+      onApply(draft, requestId);
       setStep("applied");
     }
   }
@@ -129,6 +136,24 @@ export function EventAgent({ onApply }: { onApply: (draft: AgentDraft) => void }
               </div>
             )}
           </dl>
+          {forecast && (
+            <aside className="rounded-xl border border-ink/25 bg-white p-3">
+              <h4 className="font-bold">{t("agentVenueForecast")}</h4>
+              {forecast.category ? (
+                <p>{t("agentForecastResult", {
+                  venue: t(forecast.category),
+                  share: forecast.share ?? 0,
+                  matches: forecast.matches ?? 0,
+                  total: forecast.sampleSize,
+                })}</p>
+              ) : (
+                <p>{t(forecast.sampleSize < 5 ? "agentForecastTooFew" : "agentForecastTie", {
+                  total: forecast.sampleSize,
+                })}</p>
+              )}
+              <p className="mt-1 text-sm">{t("agentForecastScope")}</p>
+            </aside>
+          )}
           {when && <p>{formatDate(when, locale)} · {formatTime(when, locale)}</p>}
           {target && <p className="font-bold">{t("agentFundSummary", { amount: formatMoney(target, locale) })}</p>}
         </section>

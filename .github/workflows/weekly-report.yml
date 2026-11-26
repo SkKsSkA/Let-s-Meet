@@ -1,0 +1,67 @@
+name: Weekly analytics report
+
+on:
+  schedule:
+    - cron: "0 4 * * 1" # Monday at 09:00 in Almaty (UTC+5)
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+concurrency:
+  group: weekly-analytics-report
+  cancel-in-progress: false
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check the report destination
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          repository="$(gh api "repos/$GITHUB_REPOSITORY")"
+          if ! jq -e --arg branch "$GITHUB_REF_NAME" \
+            '.private and .has_issues and (.default_branch == $branch)' <<<"$repository" >/dev/null; then
+            echo "::error::Run this workflow on the default branch of a private repository with Issues enabled."
+            exit 1
+          fi
+
+      - name: Fetch the report
+        env:
+          SITE_URL: ${{ secrets.SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        shell: bash
+        run: |
+          base_url="${SITE_URL%/}"
+          if [[ ! "$base_url" =~ ^https://[a-zA-Z0-9.-]+(:[0-9]+)?$ || "${#CRON_SECRET}" -lt 32 ]]; then
+            echo "::error::Set SITE_URL to the deployed HTTPS site origin and CRON_SECRET to the server's report key."
+            exit 1
+          fi
+          curl --fail --silent --show-error --proto '=https' --max-time 120 \
+            -X POST -H "Authorization: Bearer $CRON_SECRET" \
+            "$base_url/api/owner/report" --output "$RUNNER_TEMP/weekly-report.json"
+          if ! jq -e '(.title | type == "string" and startswith("Отчёт Let")) and (.body | type == "string" and length > 0)' \
+             "$RUNNER_TEMP/weekly-report.json" >/dev/null; then
+            echo "::error::The site did not return a valid weekly report."
+            exit 1
+          fi
+
+      - name: Publish to Issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          report="$RUNNER_TEMP/weekly-report.json"
+          title="$(jq -r '.title' "$report")"
+          endpoint="repos/$GITHUB_REPOSITORY/issues"
+          existing="$(gh api --paginate --slurp "$endpoint?state=all&creator=github-actions%5Bbot%5D&per_page=100" |
+            jq -r --arg title "$title" '[.[][] | select(.pull_request == null and .title == $title)][0].html_url // empty')"
+          if [[ -n "$existing" ]]; then
+            report_url="$existing"
+          else
+            report_url="$(gh api --method POST "$endpoint" --input "$report" --jq '.html_url')"
+          fi
+          printf 'Weekly analytics report: %s\n' "$report_url" >> "$GITHUB_STEP_SUMMARY"

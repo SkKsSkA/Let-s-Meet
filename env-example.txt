@@ -24,3 +24,6 @@ STRIPE_KZT_PER_UNIT=500
 
 # Supabase Auth user ID for the private site analytics page
 ANALYTICS_OWNER_ID=
+
+# Optional: same random key on the web server and in GitHub Actions secrets
+CRON_SECRET=

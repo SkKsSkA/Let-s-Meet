@@ -1,9 +1,11 @@
+import { predictVenue } from "@/lib/venue-forecast";
 import { suggestEventDetails } from "@/lib/event-suggestions";
 import { NextResponse } from "next/server";
 import { eventStartIso, fundAmount, type AgentDraft } from "@/lib/event-agent";
 import { APP_TZ, formatKind, KINDS } from "@/lib/format";
 import { LOCALES, translate, type Locale } from "@/lib/i18n";
 import { getLocale } from "@/lib/i18n/server";
+import { getAdminSupabase } from "@/lib/supabase/admin";
 import { getServerSupabase, supabaseConfigured } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -283,10 +285,12 @@ async function aiDraft(prompt: string, key: string, locale: Locale, agent: boole
 }
 
 export async function POST(request: Request) {
+  let organizerId: string | undefined;
+  const sb = supabaseConfigured ? getServerSupabase() : null;
   if (supabaseConfigured) {
-    const sb = getServerSupabase();
     const user = sb ? (await sb.auth.getUser()).data.user : null;
     if (!user) return NextResponse.json({ error: "auth" }, { status: 401 });
+    organizerId = user.id;
   }
 
   let prompt = "";
@@ -314,7 +318,24 @@ export async function POST(request: Request) {
       starts_at: date && time ? date + "T" + time : null,
       date_hint: date,
     };
-    return NextResponse.json({ draft, source: viaAi ? "ai" : "fallback" });
+    const source = viaAi ? "ai" : "fallback";
+    const admin = organizerId ? getAdminSupabase() : null;
+    const topic = viaAi?.kind ?? KIND_WORDS.find(([pattern]) => pattern.test(prompt))?.[1] ?? null;
+    const [request, history] = await Promise.all([
+      admin?.from("agent_requests")
+        .insert({ organizer_id: organizerId, kind: topic, source })
+        .select("id").single(),
+      topic && sb ? sb.from("events").select("location_name")
+        .eq("visibility", "public").eq("kind", topic)
+        .lte("starts_at", new Date().toISOString())
+        .neq("location_name", "").order("starts_at", { ascending: false }).order("id").limit(200)
+        .abortSignal(AbortSignal.timeout(2500)) : null,
+    ]);
+    if (request?.error) console.warn("Agent analytics write failed", request.error.code);
+    const forecast = history?.data
+      ? predictVenue(history.data.map(row => row.location_name))
+      : undefined;
+    return NextResponse.json({ draft, source, requestId: request?.data?.id, forecast });
   }
   const { date_hint, address, fund, estimatePerGuest, venueSearch, ...draft } = parsed;
   return NextResponse.json({ draft, source: viaAi ? "ai" : "fallback" });

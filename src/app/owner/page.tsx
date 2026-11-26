@@ -6,6 +6,8 @@ import { getLocale, serverMessages } from "@/lib/i18n/server";
 import { getOwnerAnalytics, isAnalyticsOwner } from "@/lib/owner-analytics";
 import { getServerSupabase } from "@/lib/supabase/server";
 
+import { Ranking } from "./Ranking";
+
 export const dynamic = "force-dynamic";
 
 export function generateMetadata() {
@@ -42,25 +44,34 @@ export default async function OwnerPage({ searchParams }: { searchParams: { peri
               <p className="text-xl font-bold">{t("analyticsTotal", { count: stats.total })}</p>
               <p>{t("analyticsWithVenue", { count: stats.withVenue })}</p>
             </div>
+            <section className="card-pop bg-violet space-y-2">
+              <h2 className="h-display text-2xl">{t("analyticsAI")}</h2>
+              <p>{t("analyticsAgentScope")}</p>
+              {stats.agent ? (
+                <ul className="flex flex-wrap gap-x-6 gap-y-2 font-semibold">
+                  <li>{t("analyticsRequests", { count: stats.agent.requests })}</li>
+                  <li>{t("analyticsFallbackRequests", { count: stats.agent.fallbackRequests })}</li>
+                  <li>{t("analyticsAgentEvents", { count: stats.agent.events })}</li>
+                </ul>
+              ) : <p role="status">{t("analyticsAgentUnavailable")}</p>}
+            </section>
             <div className="grid gap-6 md:grid-cols-2">
               {([
-                { key: "analyticsKinds", rows: stats.kinds, color: "bg-mint" },
-                { key: "analyticsVenues", rows: stats.venues, color: "bg-sky" },
-              ] as const).map(({ key, rows, color }) => (
-                <section key={key} className={`card-pop ${color}`}>
+                { key: "analyticsKinds", rows: stats.kinds, total: stats.total, color: "bg-mint", kind: true },
+                { key: "analyticsVenues", rows: stats.venues, total: stats.withVenue, color: "bg-sky", kind: false },
+              ] as const).map(({ key, rows, total, color, kind }) => (
+                <section key={key} className={`card-pop min-w-0 ${color}`}>
                   <h2 className="h-display text-2xl">{t(key)}</h2>
                   {rows.length ? (
-                    <ol className="mt-4 space-y-3">
-                      {rows.map(row => (
-                        <li key={JSON.stringify([row.label, row.detail])} className="flex items-baseline justify-between gap-4 border-b border-ink/20 pb-2">
-                          <span className="min-w-0 break-words font-semibold">
-                            {key === "analyticsKinds" ? formatKind(row.label, locale) : row.label}
-                            {row.detail && <span className="block text-sm font-normal">{row.detail}</span>}
-                          </span>
-                          <strong className="tabular-nums">{row.count}</strong>
-                        </li>
-                      ))}
-                    </ol>
+                    <Ranking
+                      rows={rows.map(row => ({
+                        ...row,
+                        label: kind ? formatKind(row.label, locale) : row.label,
+                      }))}
+                      total={total}
+                      locale={locale}
+                      otherLabel={t("analyticsOther")}
+                    />
                   ) : <p className="mt-3">{t("analyticsEmpty")}</p>}
                 </section>
               ))}

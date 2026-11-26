@@ -21,6 +21,7 @@ export function NewEventForm() {
 
   const titleInput = useRef<HTMLInputElement>(null);
 
+  const [agentRequestId, setAgentRequestId] = useState<string>();
   const [kind, setKind] = useState<string>(KINDS[1]);
   const [title, setTitle] = useState("");
   const [startsAt, setStartsAt] = useState("");
@@ -41,7 +42,8 @@ export function NewEventForm() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<MessageKey | "">("");
 
-  function applyDraft(draft: AgentDraft) {
+  function applyDraft(draft: AgentDraft, requestId?: string) {
+    setAgentRequestId(requestId);
     setKind(draft.kind);
     setTitle(draft.title);
     setDescription(draft.description);
@@ -84,6 +86,7 @@ export function NewEventForm() {
 
     const payload = {
       host_id: auth.user.id,
+      ...(agentRequestId ? { agent_request_id: agentRequestId } : {}),
       kind,
       title: title.trim(),
       description: description.trim(),
